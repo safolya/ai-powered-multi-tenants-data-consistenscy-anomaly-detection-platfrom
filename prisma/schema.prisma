@@ -16,13 +16,15 @@ model Users {
 
 model Tenants {
   id          Int            @id @default(autoincrement())
-  name        Int            @unique
+  name        String            @unique
   domain      String         @unique
   status      Tenant_status  @default(PENDING)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   members     User_Tenants[]
   invitations invitations[]
+
+  @@index([status])
 }
 
 model Role {
@@ -55,6 +57,9 @@ model invitations {
   expiresAt DateTime
   createdAt DateTime    @default(now())
   tenant    Tenants     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([tenantId])
 }
 
 enum Role_type {

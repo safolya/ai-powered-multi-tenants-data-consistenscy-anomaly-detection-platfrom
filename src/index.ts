@@ -4,9 +4,11 @@ import express from 'express';
 import { prisma } from "../lib/prisma";
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
+import cookieParser from 'cookie-parser';
+import { authMiddle } from './middleware/authMiddle';
 
 const app = express();
-
+app.use(cookieParser());
 app.use(express.json())
 
 const PORT = process.env.PORT || 3000;
@@ -100,6 +102,33 @@ app.post("/login", async (req, res) => {
         token
     })
 
+})
+
+
+app.post("/org",authMiddle,async(req,res)=>{
+    const{name}=req.body;
+    const existingTenant=await prisma.tenants.findFirst({
+        where:{
+            name,
+            status:"ACCEPT"
+        }
+    })
+    if(existingTenant){
+        return res.json({
+            message:"Tenant is already exists"
+        })
+    }
+
+    const tenat=await prisma.tenants.create({
+        data:{
+            name:name,
+            domain:"companyA.com"
+        }
+    })
+    res.json({
+        message:"successfull",
+        tenat
+    })
 })
 
 
