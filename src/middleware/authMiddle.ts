@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import cookie_parser from "cookie-parser"
 import dotenv from "dotenv"
 dotenv.config()
 
@@ -12,7 +11,7 @@ export const authMiddle=async(req:Request,res:Response,next:NextFunction)=>{
         console.log("Token in middleware:", token);
     if(!token){
         return res.json({
-            message:"Invalid Token"
+            message:"Login first"
         })
     }
 

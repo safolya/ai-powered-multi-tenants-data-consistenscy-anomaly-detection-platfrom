@@ -31,35 +31,69 @@ app.post("/signup", async (req, res) => {
             })
         }
 
-        const hashedPass =await bcrypt.hash(password, 10);
+        const domain = email.split("@")[1];
 
-        const user = await prisma.users.create({
-            data: {
-                email: email,
-                password: hashedPass as unknown as string
+        const existingTenants = await prisma.tenants.findUnique({
+            where: { domain: domain }
+        })
+
+        if (!existingTenants) {
+            const tenant = await prisma.tenants.create({
+                data: {
+                    name: domain.split(".")[0],
+                    domain: domain
+                }
+            })
+
+            const hashedPass = await bcrypt.hash(password, 10);
+
+            const user = await prisma.users.create({
+                data: {
+                    email: email,
+                    password: hashedPass as unknown as string
+                }
+            })
+
+            const role=await prisma.role.create({
+                data:{
+                    role:"ADMIN"
+                }
+            })
+
+            const membership = await prisma.user_Tenants.create({
+                data: {
+                    userId: user.id,
+                    roleId:role.id,
+                    tenantId:tenant.id
             }
-        })
-
-        const token = jwt.sign({
-            userId: user.id
-        }, secret as string)
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 24 * 60 * 60 * 1000
-        });
+            })
 
 
+            res.json({
+                message:"Success, please login"
+            })
+
+
+        } else {
+            return res.json({
+                message: "similar domain org is already present.. wait for invitation"
+            })
+        }
+
+
+        // const token = jwt.sign({
+        //     userId: user.id
+        // }, secret as string)
+
+        // res.cookie("token", token, {
+        //     httpOnly: true,
+        //     secure: false,
+        //     sameSite: "lax",
+        //     maxAge: 24 * 60 * 60 * 1000
+        // });
+    } catch (error: any) {
         res.json({
-            message: "Success",
-            user,
-            token
-        })
-    } catch (error:any) {
-        res.json({
-            message: error.message||"Internal Server Error"
+            message: error.message || "Internal Server Error"
         })
     }
 })
@@ -76,7 +110,7 @@ app.post("/login", async (req, res) => {
         })
     }
 
-    const pass =await bcrypt.compare(password, existinguser.password as string);
+    const pass = await bcrypt.compare(password, existinguser.password as string);
 
     if (!pass) {
         return res.json({
@@ -89,10 +123,10 @@ app.post("/login", async (req, res) => {
     }, secret as string)
 
     res.cookie("token", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000
     });
 
 
@@ -105,28 +139,28 @@ app.post("/login", async (req, res) => {
 })
 
 
-app.post("/org",authMiddle,async(req,res)=>{
-    const{name}=req.body;
-    const existingTenant=await prisma.tenants.findFirst({
-        where:{
+app.post("/org", authMiddle, async (req, res) => {
+    const { name } = req.body;
+    const existingTenant = await prisma.tenants.findFirst({
+        where: {
             name,
-            status:"ACCEPT"
+            status: "ACCEPT"
         }
     })
-    if(existingTenant){
+    if (existingTenant) {
         return res.json({
-            message:"Tenant is already exists"
+            message: "Tenant is already exists"
         })
     }
 
-    const tenat=await prisma.tenants.create({
-        data:{
-            name:name,
-            domain:"companyA.com"
+    const tenat = await prisma.tenants.create({
+        data: {
+            name: name,
+            domain: "companyA.com"
         }
     })
     res.json({
-        message:"successfull",
+        message: "successfull",
         tenat
     })
 })
