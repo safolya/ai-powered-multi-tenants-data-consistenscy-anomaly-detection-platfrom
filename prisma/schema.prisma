@@ -52,7 +52,8 @@ model invitations {
   id        Int         @id @default(autoincrement())
   tenantId  Int
   email     String
-  token     Status_type @default(PENDING)
+  status    Status_type @default(PENDING)
+  token     String   @unique
   role      String
   expiresAt DateTime
   createdAt DateTime    @default(now())

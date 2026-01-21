@@ -33,6 +33,8 @@ app.post("/signup", async (req, res) => {
 
         const domain = email.split("@")[1];
 
+        console.log(domain);
+
         const existingTenants = await prisma.tenants.findUnique({
             where: { domain: domain }
         })
@@ -70,7 +72,8 @@ app.post("/signup", async (req, res) => {
 
 
             res.json({
-                message:"Success, please login"
+                message:"Success, please login",
+                membership
             })
 
 
@@ -118,9 +121,30 @@ app.post("/login", async (req, res) => {
         })
     }
 
-    const token = jwt.sign({
-        userId: existinguser.id
-    }, secret as string)
+
+    const membership=await prisma.user_Tenants.findMany({
+       where:{userId:existinguser.id},
+       include:{
+           role:true,
+           tenant:true
+       }
+    })
+
+    if(membership.length===0){
+        return res.json({
+            message:"You don't have any membership"
+        })
+    };
+
+
+    const acitveMembership=membership[0];
+
+    const token=jwt.sign({
+        userId:existinguser.id,
+        tenatId:acitveMembership?.tenantId,
+        role:acitveMembership?.role.role
+    },secret as string)
+
 
     res.cookie("token", token, {
         httpOnly: true,
@@ -139,31 +163,31 @@ app.post("/login", async (req, res) => {
 })
 
 
-app.post("/org", authMiddle, async (req, res) => {
-    const { name } = req.body;
-    const existingTenant = await prisma.tenants.findFirst({
-        where: {
-            name,
-            status: "ACCEPT"
-        }
-    })
-    if (existingTenant) {
-        return res.json({
-            message: "Tenant is already exists"
-        })
-    }
+// app.post("/org", authMiddle, async (req, res) => {
+//     const { name } = req.body;
+//     const existingTenant = await prisma.tenants.findFirst({
+//         where: {
+//             name,
+//             status: "ACCEPT"
+//         }
+//     })
+//     if (existingTenant) {
+//         return res.json({
+//             message: "Tenant is already exists"
+//         })
+//     }
 
-    const tenat = await prisma.tenants.create({
-        data: {
-            name: name,
-            domain: "companyA.com"
-        }
-    })
-    res.json({
-        message: "successfull",
-        tenat
-    })
-})
+//     const tenat = await prisma.tenants.create({
+//         data: {
+//             name: name,
+//             domain: "companyA.com"
+//         }
+//     })
+//     res.json({
+//         message: "successfull",
+//         tenat
+//     })
+// })
 
 
 
