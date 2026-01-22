@@ -8,37 +8,39 @@ datasource db {
 }
 
 model Users {
-  id         Int            @id @default(autoincrement())
+  id         String         @id @default(uuid())
   email      String         @unique
   password   String?
   membership User_Tenants[]
 }
 
 model Tenants {
-  id          Int            @id @default(autoincrement())
-  name        String         @unique
-  domain      String         @unique
-  status      Tenant_status  @default(PENDING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  members     User_Tenants[]
-  invitations invitations[]
+  id           String         @id @default(uuid())
+  name         String         @unique
+  domain       String         @unique
+  status       Tenant_status  @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  members      User_Tenants[]
+  invitations  invitations[]
+  records      Records[]
+  changeTracks Change_track[]
 
   @@index([status])
 }
 
 model Role {
-  id   Int       @id @default(autoincrement())
+  id   String    @id @default(uuid())
   role Role_type @unique @default(USER)
 
   membership User_Tenants[]
 }
 
 model User_Tenants {
-  id       Int     @id @default(autoincrement())
-  userId   Int
-  tenantId Int
-  roleId   Int
+  id       String  @id @default(uuid())
+  userId   String
+  tenantId String
+  roleId   String
   user     Users   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant   Tenants @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role     Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -49,8 +51,8 @@ model User_Tenants {
 }
 
 model invitations {
-  id        Int         @id @default(autoincrement())
-  tenantId  Int
+  id        String      @id @default(uuid())
+  tenantId  String
   email     String
   status    Status_type @default(PENDING)
   token     String      @unique
@@ -64,11 +66,25 @@ model invitations {
 }
 
 model Records {
-  id       Int    @id @default(autoincrement())
-  tenantId Int
-  type     Record_type
-  key      String
-  value    Json
+  id           String         @id @default(uuid())
+  tenantId     String
+  type         Record_type
+  key          String
+  value        Json
+  tenant       Tenants        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  changeTracks Change_track[]
+}
+
+model Change_track {
+  id       String   @id @default(uuid())
+  recordId String
+  newval   Int
+  oldval   Int
+  tenantId String
+  changeBy Int
+  time     DateTime @default(now())
+  tenant   Tenants  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  record   Records  @relation(fields: [recordId], references: [id], onDelete: Cascade)
 }
 
 enum Role_type {
@@ -89,7 +105,7 @@ enum Tenant_status {
   REJECTED
 }
 
-enum  Record_type {
+enum Record_type {
   INVENTORY
   CONFIG
   PRICES

@@ -192,10 +192,33 @@ app.post("/login", async (req, res) => {
 
 app.post("/records/:tenantId",authMiddle,roleMiddle,async(req,res)=>{
     try {
-        
+        const{type,key,value}=req.body;
+        const{tenantId}=req.params;
 
-    } catch (error) {
-        
+        const track=await prisma.change_track.findUnique({
+            where:{tenantId:tenantId}
+        })
+
+        const newVal=track?.oldval;
+
+        const record=await prisma.records.create({
+            data:{
+                tenantId:tenantId as unknown as string,
+                type:type,
+                key:key,
+                value:value
+            }
+        })
+
+        res.status(200).json({
+            message:"Success",
+            record
+        })
+
+    } catch (error:any) {
+        res.json({
+            message:error.message
+        })
     }
 })
 
