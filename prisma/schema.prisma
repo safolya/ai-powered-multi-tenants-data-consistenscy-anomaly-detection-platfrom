@@ -16,7 +16,7 @@ model Users {
 
 model Tenants {
   id          Int            @id @default(autoincrement())
-  name        String            @unique
+  name        String         @unique
   domain      String         @unique
   status      Tenant_status  @default(PENDING)
   createdAt   DateTime       @default(now())
@@ -29,7 +29,7 @@ model Tenants {
 
 model Role {
   id   Int       @id @default(autoincrement())
-  role Role_type @unique
+  role Role_type @unique @default(USER)
 
   membership User_Tenants[]
 }
@@ -53,7 +53,7 @@ model invitations {
   tenantId  Int
   email     String
   status    Status_type @default(PENDING)
-  token     String   @unique
+  token     String      @unique
   role      String
   expiresAt DateTime
   createdAt DateTime    @default(now())
@@ -63,8 +63,17 @@ model invitations {
   @@index([tenantId])
 }
 
+model Records {
+  id       Int    @id @default(autoincrement())
+  tenantId Int
+  type     Record_type
+  key      String
+  value    Json
+}
+
 enum Role_type {
   ADMIN
+  MANAGER
   USER
 }
 
@@ -78,4 +87,11 @@ enum Tenant_status {
   PENDING
   ACCEPT
   REJECTED
+}
+
+enum  Record_type {
+  INVENTORY
+  CONFIG
+  PRICES
+  LIMIT
 }

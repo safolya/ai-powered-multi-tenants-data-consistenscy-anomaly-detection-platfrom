@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import cookieParser from 'cookie-parser';
 import { authMiddle } from './middleware/authMiddle';
+import { roleMiddle } from './middleware/roleMiddle';
 
 const app = express();
 app.use(cookieParser());
@@ -188,6 +189,15 @@ app.post("/login", async (req, res) => {
 //         tenat
 //     })
 // })
+
+app.post("/records/:tenantId",authMiddle,roleMiddle,async(req,res)=>{
+    try {
+        
+
+    } catch (error) {
+        
+    }
+})
 
 
 
