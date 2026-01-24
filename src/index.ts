@@ -165,75 +165,55 @@ app.post("/login", async (req, res) => {
 })
 
 
-app.post("/records/:tenantId", authMiddle, roleMiddle, async (req, res) => {
+app.post("/records/", authMiddle, roleMiddle, async (req, res) => {
     try {
-        await prisma.$transaction(async (tx) => {
-            const { type, key, value } = req.body;
-            const { tenantId } = req.params as { tenantId: string };
+        const { type, key, value } = req.body;
+        //@ts-ignore
+        const { tenantId, userId, role } = req.user
 
-            const types = type;
-            //@ts-ignore
-            const role = req.user.role;
+        const allowedRolesByType: Record<string, string[]> = {
+            INVENTORY: ["ADMIN", "MANAGER"],
+            PRICES: ["ADMIN", "MANAGER"],
+            CONFIG: ["ADMIN"],
+            LIMIT: ["ADMIN"]
+        };
 
-            const track = await tx.change_track.findFirst({
-                where: { tenantId: tenantId }
-            })
 
-            const newVal = track?.oldval;
+        if (!allowedRolesByType[type]?.includes(role)) {
+            return res.status(403).json({ message: "Not allowed" });
+        }
 
-            if (types == "INVENTORY" || types == "PRICES") {
-                if (role == "ADMIN" || role == "MANAGER") {
-                    await tx.records.create({
-                        data: {
-                            tenantId: tenantId as unknown as string,
-                            type: type,
-                            key: key,
-                            value: value
-                        }
-                    })
+
+        const result = await prisma.$transaction(async (tx) => {
+            //create record
+            const record = await tx.records.create({
+                data: {
+                    tenantId: tenantId,
+                    type: type,
+                    key: key,
+                    value: value
                 }
-            }
-
-            if (types == "CONFIG" || types == "LIMIT") {
-                if (role == "ADMIN") {
-                    await tx.records.create({
-                        data: {
-                            tenantId: tenantId as unknown as string,
-                            type: type,
-                            key: key,
-                            value: value
-                        }
-                    })
-                }
-            }
-
-
-
-            const record = await tx.records.findFirst({
-                where: { tenantId: tenantId }
-            })
-
-            if (!record) {
-                throw new Error("recordId is required for change tracking");
-            }
+            });
 
             const change_track = await tx.change_track.create({
                 data: {
                     recordId: record?.id,
                     tenantId: tenantId as unknown as string,
-                    oldval: newVal ?? Prisma.JsonNull,
-                    newval: record?.value ?? Prisma.JsonNull,
-                    action: "UPDATE",
+                    oldval: Prisma.JsonNull,
+                    newval: record.value ?? Prisma.JsonNull,
+                    action: "CREATE",
                     //@ts-ignore
-                    changeBy: req.user.userId
+                    changeBy: userId
                 }
             })
 
-            res.status(200).json({
-                message: "Success",
-                record,
-                change_track
-            })
+            return { record, change_track }
+
+        })
+
+        res.json({
+            message: "Succesfull",
+            result
         })
 
     } catch (error: any) {
@@ -243,6 +223,68 @@ app.post("/records/:tenantId", authMiddle, roleMiddle, async (req, res) => {
     }
 })
 
+app.put("/:recordId/update", async (req, res) => {
+    //@ts-ignore
+    const { tenantId, userId, role } = req.user
+    const { recordId } = req.params
+    const { value } = req.body
+
+    const result = await prisma.$transaction(async (tx) => {
+        const existingRecord = await prisma.records.findUnique({
+            where: { id: recordId }
+        })
+
+        if (!existingRecord) {
+            return res.json({
+                message: "There is no existing record"
+            })
+        }
+
+        if (existingRecord.tenantId != tenantId) {
+            throw new Error("Cross tenant-Access denied")
+        }
+
+        const allowedRolesByType: Record<string, string[]> = {
+            INVENTORY: ["ADMIN", "MANAGER"],
+            PRICES: ["ADMIN", "MANAGER"],
+            CONFIG: ["ADMIN"],
+            LIMIT: ["ADMIN"]
+        };
+
+        if (!allowedRolesByType[existingRecord.type]?.includes(role)) {
+            throw new Error("Not allowed to update this record type");
+        }
+
+        const oldValue = existingRecord.value;
+
+        const updatedRecord = await tx.records.update({
+            where: { id: recordId },
+            data: {
+                value: value
+            }
+        })
+
+        const change_track = await tx.change_track.create({
+            data:{
+                tenantId:tenantId,
+                recordId:updatedRecord.id,
+                changeBy:userId,
+                action:"UPDATE",
+                oldval:oldValue ?? Prisma.JsonNull,
+                newval:updatedRecord.value ?? Prisma.JsonNull
+            }
+        })
+
+        return {change_track,updatedRecord}
+
+    })
+      
+    res.json({
+        message: "Successfully updated",
+        result
+    })
+
+})
 
 
 app.listen(PORT, () => {
