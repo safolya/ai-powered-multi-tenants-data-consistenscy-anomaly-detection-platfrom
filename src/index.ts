@@ -7,6 +7,7 @@ import bcrypt from "bcrypt"
 import cookieParser from 'cookie-parser';
 import { authMiddle } from './middleware/authMiddle';
 import { roleMiddle } from './middleware/roleMiddle';
+import { Prisma } from '../generated/prisma/browser';
 
 const app = express();
 app.use(cookieParser());
@@ -57,23 +58,23 @@ app.post("/signup", async (req, res) => {
                 }
             })
 
-            const role=await prisma.role.create({
-                data:{
-                    role:"ADMIN"
+            const role = await prisma.role.create({
+                data: {
+                    role: "ADMIN"
                 }
             })
 
             const membership = await prisma.user_Tenants.create({
                 data: {
                     userId: user.id,
-                    roleId:role.id,
-                    tenantId:tenant.id
-            }
+                    roleId: role.id,
+                    tenantId: tenant.id
+                }
             })
 
 
             res.json({
-                message:"Success, please login",
+                message: "Success, please login",
                 membership
             })
 
@@ -123,28 +124,28 @@ app.post("/login", async (req, res) => {
     }
 
 
-    const membership=await prisma.user_Tenants.findMany({
-       where:{userId:existinguser.id},
-       include:{
-           role:true,
-           tenant:true
-       }
+    const membership = await prisma.user_Tenants.findMany({
+        where: { userId: existinguser.id },
+        include: {
+            role: true,
+            tenant: true
+        }
     })
 
-    if(membership.length===0){
+    if (membership.length === 0) {
         return res.json({
-            message:"You don't have any membership"
+            message: "You don't have any membership"
         })
     };
 
 
-    const acitveMembership=membership[0];
+    const acitveMembership = membership[0];
 
-    const token=jwt.sign({
-        userId:existinguser.id,
-        tenatId:acitveMembership?.tenantId,
-        role:acitveMembership?.role.role
-    },secret as string)
+    const token = jwt.sign({
+        userId: existinguser.id,
+        tenatId: acitveMembership?.tenantId,
+        role: acitveMembership?.role.role
+    }, secret as string)
 
 
     res.cookie("token", token, {
@@ -164,60 +165,80 @@ app.post("/login", async (req, res) => {
 })
 
 
-// app.post("/org", authMiddle, async (req, res) => {
-//     const { name } = req.body;
-//     const existingTenant = await prisma.tenants.findFirst({
-//         where: {
-//             name,
-//             status: "ACCEPT"
-//         }
-//     })
-//     if (existingTenant) {
-//         return res.json({
-//             message: "Tenant is already exists"
-//         })
-//     }
-
-//     const tenat = await prisma.tenants.create({
-//         data: {
-//             name: name,
-//             domain: "companyA.com"
-//         }
-//     })
-//     res.json({
-//         message: "successfull",
-//         tenat
-//     })
-// })
-
-app.post("/records/:tenantId",authMiddle,roleMiddle,async(req,res)=>{
+app.post("/records/:tenantId", authMiddle, roleMiddle, async (req, res) => {
     try {
-        const{type,key,value}=req.body;
-        const{tenantId}=req.params;
+        await prisma.$transaction(async (tx) => {
+            const { type, key, value } = req.body;
+            const { tenantId } = req.params as { tenantId: string };
 
-        const track=await prisma.change_track.findUnique({
-            where:{tenantId:tenantId}
-        })
+            const types = type;
+            //@ts-ignore
+            const role = req.user.role;
 
-        const newVal=track?.oldval;
+            const track = await tx.change_track.findFirst({
+                where: { tenantId: tenantId }
+            })
 
-        const record=await prisma.records.create({
-            data:{
-                tenantId:tenantId as unknown as string,
-                type:type,
-                key:key,
-                value:value
+            const newVal = track?.oldval;
+
+            if (types == "INVENTORY" || types == "PRICES") {
+                if (role == "ADMIN" || role == "MANAGER") {
+                    await tx.records.create({
+                        data: {
+                            tenantId: tenantId as unknown as string,
+                            type: type,
+                            key: key,
+                            value: value
+                        }
+                    })
+                }
             }
+
+            if (types == "CONFIG" || types == "LIMIT") {
+                if (role == "ADMIN") {
+                    await tx.records.create({
+                        data: {
+                            tenantId: tenantId as unknown as string,
+                            type: type,
+                            key: key,
+                            value: value
+                        }
+                    })
+                }
+            }
+
+
+
+            const record = await tx.records.findFirst({
+                where: { tenantId: tenantId }
+            })
+
+            if (!record) {
+                throw new Error("recordId is required for change tracking");
+            }
+
+            const change_track = await tx.change_track.create({
+                data: {
+                    recordId: record?.id,
+                    tenantId: tenantId as unknown as string,
+                    oldval: newVal ?? Prisma.JsonNull,
+                    newval: record?.value ?? Prisma.JsonNull,
+                    action: "UPDATE",
+                    //@ts-ignore
+                    changeBy: req.user.userId
+                }
+            })
+
+            res.status(200).json({
+                message: "Success",
+                record,
+                change_track
+            })
         })
 
-        res.status(200).json({
-            message:"Success",
-            record
-        })
-
-    } catch (error:any) {
+    } catch (error: any) {
         res.json({
-            message:error.message
+            message: error.message
         })
     }
 })

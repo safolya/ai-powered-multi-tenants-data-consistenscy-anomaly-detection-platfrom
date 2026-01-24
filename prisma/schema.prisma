@@ -78,8 +78,9 @@ model Records {
 model Change_track {
   id       String   @id @default(uuid())
   recordId String
-  newval   Int
-  oldval   Int
+  newval   Json
+  oldval   Json
+  action   Action_type
   tenantId String
   changeBy Int
   time     DateTime @default(now())
@@ -110,4 +111,10 @@ enum Record_type {
   CONFIG
   PRICES
   LIMIT
+}
+
+enum  Action_type {
+  CREATE
+  UPDATE
+  DELETE
 }
