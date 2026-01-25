@@ -82,7 +82,7 @@ model Change_track {
   oldval   Json
   action   Action_type
   tenantId String
-  changeBy Int
+  changeBy String
   time     DateTime @default(now())
   tenant   Tenants  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   record   Records  @relation(fields: [recordId], references: [id], onDelete: Cascade)

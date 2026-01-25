@@ -19,333 +19,322 @@ const PORT = process.env.PORT || 3000;
 const secret = process.env.JWT_SECRET;
 
 
-app.post("/signup", async (req, res) => {
+// app.post("/signup", async (req, res) => {
 
-    try {
-        const { email, password } = req.body;
+//     try {
+//         const { email, password } = req.body;
 
-        const existingUser = await prisma.users.findUnique({
-            where: { email }
-        })
+//         const existingUser = await prisma.users.findUnique({
+//             where: { email }
+//         })
 
-        if (existingUser) {
-            return res.json({
-                message: "User Already exist, Please login",
-            })
-        }
+//         if (existingUser) {
+//             return res.json({
+//                 message: "User Already exist, Please login",
+//             })
+//         }
 
-        const domain = email.split("@")[1];
+//         const domain = email.split("@")[1];
 
-        console.log(domain);
+//         console.log(domain);
 
-        const existingTenants = await prisma.tenants.findUnique({
-            where: { domain: domain }
-        })
+//         const existingTenants = await prisma.tenants.findUnique({
+//             where: { domain: domain }
+//         })
 
-        if (!existingTenants) {
-            const tenant = await prisma.tenants.create({
-                data: {
-                    name: domain.split(".")[0],
-                    domain: domain
-                }
-            })
+//         if (!existingTenants) {
+//             const tenant = await prisma.tenants.create({
+//                 data: {
+//                     name: domain.split(".")[0],
+//                     domain: domain
+//                 }
+//             })
 
-            const hashedPass = await bcrypt.hash(password, 10);
+//             const hashedPass = await bcrypt.hash(password, 10);
 
-            const user = await prisma.users.create({
-                data: {
-                    email: email,
-                    password: hashedPass as unknown as string
-                }
-            })
+//             const user = await prisma.users.create({
+//                 data: {
+//                     email: email,
+//                     password: hashedPass as unknown as string
+//                 }
+//             })
 
-            const role = await prisma.role.create({
-                data: {
-                    role: "ADMIN"
-                }
-            })
+//             const role = await prisma.role.create({
+//                 data: {
+//                     role: "ADMIN"
+//                 }
+//             })
 
-            const membership = await prisma.user_Tenants.create({
-                data: {
-                    userId: user.id,
-                    roleId: role.id,
-                    tenantId: tenant.id
-                }
-            })
-
-
-            res.json({
-                message: "Success, please login",
-                membership
-            })
+//             const membership = await prisma.user_Tenants.create({
+//                 data: {
+//                     userId: user.id,
+//                     roleId: role.id,
+//                     tenantId: tenant.id
+//                 }
+//             })
 
 
-        } else {
-            return res.json({
-                message: "similar domain org is already present.. wait for invitation"
-            })
-        }
+//             res.json({
+//                 message: "Success, please login",
+//                 membership
+//             })
 
 
-        // const token = jwt.sign({
-        //     userId: user.id
-        // }, secret as string)
+//         } else {
+//             return res.json({
+//                 message: "similar domain org is already present.. wait for invitation"
+//             })
+//         }
 
-        // res.cookie("token", token, {
-        //     httpOnly: true,
-        //     secure: false,
-        //     sameSite: "lax",
-        //     maxAge: 24 * 60 * 60 * 1000
-        // });
-    } catch (error: any) {
-        res.json({
-            message: error.message || "Internal Server Error"
-        })
-    }
-})
+//     } catch (error: any) {
+//         res.json({
+//             message: error.message || "Internal Server Error"
+//         })
+//     }
+// })
 
-app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-    const existinguser = await prisma.users.findUnique({
-        where: { email }
-    })
+// app.post("/login", async (req, res) => {
+//     const { email, password } = req.body;
+//     const existinguser = await prisma.users.findUnique({
+//         where: { email }
+//     })
 
-    if (!existinguser) {
-        return res.json({
-            message: "Email is not registered, Please signup"
-        })
-    }
+//     if (!existinguser) {
+//         return res.json({
+//             message: "Email is not registered, Please signup"
+//         })
+//     }
 
-    const pass = await bcrypt.compare(password, existinguser.password as string);
+//     const pass = await bcrypt.compare(password, existinguser.password as string);
 
-    if (!pass) {
-        return res.json({
-            message: "Incorrect Credentials"
-        })
-    }
+//     if (!pass) {
+//         return res.json({
+//             message: "Incorrect Credentials"
+//         })
+//     }
 
 
-    const membership = await prisma.user_Tenants.findMany({
-        where: { userId: existinguser.id },
-        include: {
-            role: true,
-            tenant: true
-        }
-    })
+//     const membership = await prisma.user_Tenants.findMany({
+//         where: { userId: existinguser.id },
+//         include: {
+//             role: true,
+//             tenant: true
+//         }
+//     })
 
-    if (membership.length === 0) {
-        return res.json({
-            message: "You don't have any membership"
-        })
-    };
-
-
-    const acitveMembership = membership[0];
-
-    const token = jwt.sign({
-        userId: existinguser.id,
-        tenatId: acitveMembership?.tenantId,
-        role: acitveMembership?.role.role
-    }, secret as string)
+//     if (membership.length === 0) {
+//         return res.json({
+//             message: "You don't have any membership"
+//         })
+//     };
 
 
-    res.cookie("token", token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000
-    });
+//     const acitveMembership = membership[0];
+
+//     const token = jwt.sign({
+//         userId: existinguser.id,
+//         tenatId: acitveMembership?.tenantId,
+//         role: acitveMembership?.role.role
+//     }, secret as string)
 
 
-    res.json({
-        message: "Success",
-        existinguser,
-        token
-    })
-
-})
-
-
-app.post("/records/", authMiddle, roleMiddle, async (req, res) => {
-    try {
-        const { type, key, value } = req.body;
-        //@ts-ignore
-        const { tenantId, userId, role } = req.user
-
-        const allowedRolesByType: Record<string, string[]> = {
-            INVENTORY: ["ADMIN", "MANAGER"],
-            PRICES: ["ADMIN", "MANAGER"],
-            CONFIG: ["ADMIN"],
-            LIMIT: ["ADMIN"]
-        };
+//     res.cookie("token", token, {
+//         httpOnly: true,
+//         secure: false,
+//         sameSite: "lax",
+//         maxAge: 24 * 60 * 60 * 1000
+//     });
 
 
-        if (!allowedRolesByType[type]?.includes(role)) {
-            return res.status(403).json({ message: "Not allowed" });
-        }
+//     res.json({
+//         message: "Success",
+//         existinguser,
+//         token
+//     })
+
+// })
 
 
-        const result = await prisma.$transaction(async (tx) => {
-            //create record
-            const record = await tx.records.create({
-                data: {
-                    tenantId: tenantId,
-                    type: type,
-                    key: key,
-                    value: value
-                }
-            });
+// app.post("/records/", authMiddle, roleMiddle, async (req, res) => {
+//     try {
+//         const { type, key, value } = req.body;
+//         //@ts-ignore
+//         const { tenantId, userId, role } = req.user
 
-            const change_track = await tx.change_track.create({
-                data: {
-                    recordId: record?.id,
-                    tenantId: tenantId as unknown as string,
-                    oldval: Prisma.JsonNull,
-                    newval: record.value ?? Prisma.JsonNull,
-                    action: "CREATE",
-                    //@ts-ignore
-                    changeBy: userId
-                }
-            })
+//         const allowedRolesByType: Record<string, string[]> = {
+//             INVENTORY: ["ADMIN", "MANAGER"],
+//             PRICES: ["ADMIN", "MANAGER"],
+//             CONFIG: ["ADMIN"],
+//             LIMIT: ["ADMIN"]
+//         };
 
-            return { record, change_track }
 
-        })
+//         if (!allowedRolesByType[type]?.includes(role)) {
+//             return res.status(403).json({ message: "Not allowed" });
+//         }
 
-        res.json({
-            message: "Succesfull",
-            result
-        })
 
-    } catch (error: any) {
-        res.json({
-            message: error.message
-        })
-    }
-})
+//         const result = await prisma.$transaction(async (tx) => {
+//             //create record
+//             const record = await tx.records.create({
+//                 data: {
+//                     tenantId: tenantId,
+//                     type: type,
+//                     key: key,
+//                     value: value
+//                 }
+//             });
 
-app.put("/:recordId/update", async (req, res) => {
-    //@ts-ignore
-    const { tenantId, userId, role } = req.user
-    const { recordId } = req.params
-    const { value } = req.body
+//             const change_track = await tx.change_track.create({
+//                 data: {
+//                     recordId: record?.id,
+//                     tenantId: tenantId as unknown as string,
+//                     oldval: Prisma.JsonNull,
+//                     newval: record.value ?? Prisma.JsonNull,
+//                     action: "CREATE",
+//                     //@ts-ignore
+//                     changeBy: userId
+//                 }
+//             })
 
-    const result = await prisma.$transaction(async (tx) => {
-        const existingRecord = await prisma.records.findUnique({
-            where: { id: recordId }
-        })
+//             return { record, change_track }
 
-        if (!existingRecord) {
-            return res.json({
-                message: "There is no existing record"
-            })
-        }
+//         })
 
-        if (existingRecord.tenantId != tenantId) {
-            throw new Error("Cross tenant-Access denied")
-        }
+//         res.json({
+//             message: "Succesfull",
+//             result
+//         })
 
-        const allowedRolesByType: Record<string, string[]> = {
-            INVENTORY: ["ADMIN", "MANAGER"],
-            PRICES: ["ADMIN", "MANAGER"],
-            CONFIG: ["ADMIN"],
-            LIMIT: ["ADMIN"]
-        };
+//     } catch (error: any) {
+//         res.json({
+//             message: error.message
+//         })
+//     }
+// })
 
-        if (!allowedRolesByType[existingRecord.type]?.includes(role)) {
-            throw new Error("Not allowed to update this record type");
-        }
+// app.put("/:recordId/update",authMiddle,roleMiddle, async (req, res) => {
+//     //@ts-ignore
+//     const { tenantId, userId, role } = req.user
+//     const { recordId } = req.params
+//     const { value } = req.body
 
-        const oldValue = existingRecord.value;
+//     const result = await prisma.$transaction(async (tx) => {
+//         const existingRecord = await prisma.records.findUnique({
+//             where: { id: recordId as string }
+//         })
 
-        const updatedRecord = await tx.records.update({
-            where: { id: recordId },
-            data: {
-                value: value
-            }
-        })
+//         if (!existingRecord) {
+//             return res.json({
+//                 message: "There is no existing record"
+//             })
+//         }
 
-        const change_track = await tx.change_track.create({
-            data:{
-                tenantId:tenantId,
-                recordId:updatedRecord.id,
-                changeBy:userId,
-                action:"UPDATE",
-                oldval:oldValue ?? Prisma.JsonNull,
-                newval:updatedRecord.value ?? Prisma.JsonNull
-            }
-        })
+//         if (existingRecord.tenantId != tenantId) {
+//             throw new Error("Cross tenant-Access denied")
+//         }
 
-        return {change_track,updatedRecord}
+//         const allowedRolesByType: Record<string, string[]> = {
+//             INVENTORY: ["ADMIN", "MANAGER"],
+//             PRICES: ["ADMIN", "MANAGER"],
+//             CONFIG: ["ADMIN"],
+//             LIMIT: ["ADMIN"]
+//         };
 
-    })
+//         if (!allowedRolesByType[existingRecord.type]?.includes(role)) {
+//             throw new Error("Not allowed to update this record type");
+//         }
+
+//         const oldValue = existingRecord.value;
+
+//         const updatedRecord = await tx.records.update({
+//             where: { id: recordId as string },
+//             data: {
+//                 value: value
+//             }
+//         })
+
+//         const change_track = await tx.change_track.create({
+//             data:{
+//                 tenantId:tenantId,
+//                 recordId:updatedRecord.id,
+//                 changeBy:userId,
+//                 action:"UPDATE",
+//                 oldval:oldValue ?? Prisma.JsonNull,
+//                 newval:updatedRecord.value ?? Prisma.JsonNull
+//             }
+//         })
+
+//         return {change_track,updatedRecord}
+
+//     })
       
-    res.json({
-        message: "Successfully updated",
-        result
-    })
+//     res.json({
+//         message: "Successfully updated",
+//         result
+//     })
 
-})
+// })
 
-app.delete("/:recordId/delete",async(req,res)=>{
+// app.delete("/:recordId/delete", authMiddle,roleMiddle,async(req,res)=>{
 
-   try {
-    const {recordId}=req.params
-     //@ts-ignore
-     const {tenantId,userId,role}=req.user
+//    try {
+//     const {recordId}=req.params
+//      //@ts-ignore
+//      const {tenantId,userId,role}=req.user
     
-     const result=await prisma.$transaction(async(tx)=>{
-        const existingRecord = await tx.records.findUnique({
-            where: { id: recordId }
-        })
+//      const result=await prisma.$transaction(async(tx)=>{
+//         const existingRecord = await tx.records.findUnique({
+//             where: { id: recordId as string }
+//         })
 
         
-        if (!existingRecord) {
-            throw new Error("No record Found")
-        }
+//         if (!existingRecord) {
+//             throw new Error("No record Found")
+//         }
         
-        if (existingRecord.tenantId != tenantId) {
-            throw new Error("Cross tenant-Access denied")
-        }
+//         if (existingRecord.tenantId != tenantId) {
+//             throw new Error("Cross tenant-Access denied")
+//         }
 
 
-        const oldvalue=existingRecord.value;
+//         const oldvalue=existingRecord.value;
 
-        if(role=="ADMIN"){
+//         if(role=="ADMIN"){
 
-            const deleteRecord=await tx.records.delete({
-                where:{id:recordId}
-            })
+//             const deleteRecord=await tx.records.delete({
+//                 where:{id:recordId as string}
+//             })
 
-        }else{
-            throw new Error("Not allowed to delete");
-        }
+//         }else{
+//             throw new Error("Not allowed to delete");
+//         }
 
-          const change_track = await tx.change_track.create({
-            data:{
-                tenantId:tenantId,
-                recordId:existingRecord.id,
-                changeBy:userId,
-                action:"DELETE",
-                oldval:oldvalue ?? Prisma.JsonNull,
-                newval:Prisma.JsonNull
-            }
-        })
+//           const change_track = await tx.change_track.create({
+//             data:{
+//                 tenantId:tenantId,
+//                 recordId:existingRecord.id,
+//                 changeBy:userId,
+//                 action:"DELETE",
+//                 oldval:oldvalue ?? Prisma.JsonNull,
+//                 newval:Prisma.JsonNull
+//             }
+//         })
           
-        return{change_track}
+//         return{change_track}
 
-     })
+//      })
 
-     res.json({
-        message:"Successfully Deleted record",
-        result
-     })
-   } catch (err:any) {
-        return res.status(400).json({
-      message: err.message || "Delete failed"
-    });
-   }
-})
+//      res.json({
+//         message:"Successfully Deleted record",
+//         result
+//      })
+//    } catch (err:any) {
+//         return res.status(400).json({
+//       message: err.message || "Delete failed"
+//     });
+//    }
+// })
 
 
 app.listen(PORT, () => {
