@@ -9,6 +9,7 @@ import { authMiddle } from './middleware/authMiddle';
 import { roleMiddle } from './middleware/roleMiddle';
 import { Prisma } from '../generated/prisma/browser';
 
+
 const app = express();
 app.use(cookieParser());
 app.use(express.json())
@@ -284,6 +285,66 @@ app.put("/:recordId/update", async (req, res) => {
         result
     })
 
+})
+
+app.delete("/:recordId/delete",async(req,res)=>{
+
+   try {
+    const {recordId}=req.params
+     //@ts-ignore
+     const {tenantId,userId,role}=req.user
+    
+     const result=await prisma.$transaction(async(tx)=>{
+        const existingRecord = await tx.records.findUnique({
+            where: { id: recordId }
+        })
+
+        
+        if (!existingRecord) {
+            throw new Error("No record Found")
+        }
+        
+        if (existingRecord.tenantId != tenantId) {
+            throw new Error("Cross tenant-Access denied")
+        }
+
+
+        const oldvalue=existingRecord.value;
+
+        if(role=="ADMIN"){
+
+            const deleteRecord=await tx.records.delete({
+                where:{id:recordId}
+            })
+
+        }else{
+            throw new Error("Not allowed to delete");
+        }
+
+          const change_track = await tx.change_track.create({
+            data:{
+                tenantId:tenantId,
+                recordId:existingRecord.id,
+                changeBy:userId,
+                action:"DELETE",
+                oldval:oldvalue ?? Prisma.JsonNull,
+                newval:Prisma.JsonNull
+            }
+        })
+          
+        return{change_track}
+
+     })
+
+     res.json({
+        message:"Successfully Deleted record",
+        result
+     })
+   } catch (err:any) {
+        return res.status(400).json({
+      message: err.message || "Delete failed"
+    });
+   }
 })
 
 
