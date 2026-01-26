@@ -109,7 +109,7 @@ export const login= async({email,password}:Data)=>{
    
        const token = jwt.sign({
            userId: existinguser.id,
-           tenatId: acitveMembership?.tenantId,
+           tenantId: acitveMembership?.tenantId,
            role: acitveMembership?.role.role
        }, secret as string)
 

@@ -22,9 +22,9 @@ export const authMiddle=async(req:Request,res:Response,next:NextFunction)=>{
             //@ts-ignore
             userId:decode.userId,
             //@ts-ignore
-            tenatId:decode.tenantId,
+            tenantId:decode.tenantId,
             //@ts-ignore
-            role:decoded.role
+            role:decode.role
         }
         next()
     }else{
