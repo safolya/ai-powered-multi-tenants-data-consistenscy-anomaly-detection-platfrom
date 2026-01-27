@@ -5,8 +5,8 @@ import {create,update,deleteRec} from "../controller/record.controller"
 const router=Router();
 
 router.post("/create",authMiddle,roleMiddle,create);
-router.post("/update",authMiddle,roleMiddle,update);
-router.post("/delete",authMiddle,roleMiddle,deleteRec);
+router.post("/:recordId/update",authMiddle,roleMiddle,update);
+router.post("/:recordId/delete",authMiddle,roleMiddle,deleteRec);
 
 
 export default router

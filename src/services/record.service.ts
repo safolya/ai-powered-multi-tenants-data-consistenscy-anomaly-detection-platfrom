@@ -54,7 +54,10 @@ export const create = async ({ type,
 
             return { record, change_track }
 
-        })
+        },{
+        maxWait: 5000, // 5s max wait to start transaction
+        timeout: 10000, // 10s max transaction time
+      })
 
         return{result}
 }
@@ -110,7 +113,10 @@ export const update=async({tenantId, userId, role, recordId, value}:UpdateData)=
 
         return {change_track,updatedRecord}
 
-    })
+    },{
+        maxWait: 5000, // 5s max wait to start transaction
+        timeout: 10000, // 10s max transaction time
+      })
 
     return{result}
 
@@ -142,17 +148,7 @@ export const deleterec=async({tenantId,userId,role,recordId}:DeleteData)=>{
 
         const oldvalue=existingRecord.value;
 
-        if(role=="ADMIN"){
-
-            const deleteRecord=await tx.records.delete({
-                where:{id:recordId as string}
-            })
-
-        }else{
-            throw new Error("NOT ALLOWED TO DELETE");
-        }
-
-          const change_track = await tx.change_track.create({
+            const change_track = await tx.change_track.create({
             data:{
                 tenantId:tenantId,
                 recordId:existingRecord.id,
@@ -162,10 +158,24 @@ export const deleterec=async({tenantId,userId,role,recordId}:DeleteData)=>{
                 newval:Prisma.JsonNull
             }
         })
+
+        if(role=="ADMIN"){
+
+            const deleteRecord=await tx.records.update({
+                where:{id:recordId as string},
+                data:{deleteAt:new Date()}
+            })
+
+        }else{
+            throw new Error("NOT ALLOWED TO DELETE");
+        }
           
         return{change_track,existingRecord}
 
-     })
+     },{
+        maxWait: 5000, // 5s max wait to start transaction
+        timeout: 10000, // 10s max transaction time
+      })
 
      return{result}
 }

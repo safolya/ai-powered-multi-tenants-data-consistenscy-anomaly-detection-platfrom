@@ -71,7 +71,8 @@ model Records {
   type         Record_type
   key          String
   value        Json
-  tenant       Tenants        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deleteAt     DateTime?
+  tenant       Tenants        @relation(fields: [tenantId], references: [id])
   changeTracks Change_track[]
 }
 
@@ -85,7 +86,7 @@ model Change_track {
   changeBy String
   time     DateTime @default(now())
   tenant   Tenants  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  record   Records  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  record   Records  @relation(fields: [recordId], references: [id])
 }
 
 enum Role_type {
