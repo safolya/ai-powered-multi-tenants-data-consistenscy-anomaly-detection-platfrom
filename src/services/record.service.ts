@@ -92,22 +92,34 @@ export const update = async ({ tenantId, userId, role, recordId, value }: Update
         }
 
         const oldValue = existingRecord.value;
+        const currVersion = existingRecord.version
 
-        const updatedRecord = await tx.records.update({
-            where: { id: recordId as string },
+        const updateRecord = await tx.records.updateMany({
+            where: { id: recordId as string, version: currVersion },
             data: {
-                value: value
+                value: value,
+                version: { increment: 1 }
             }
         })
+
+        if (updateRecord.count === 0) {
+            throw new Error(
+                "Record was modified by another user. Please refresh and retry."
+            );
+        }
+
+        const updatedRecord = await tx.records.findUnique({
+            where: { id: recordId }
+        });
 
         const change_track = await tx.change_track.create({
             data: {
                 tenantId: tenantId,
-                recordId: updatedRecord.id,
+                recordId: recordId,
                 changeBy: userId,
                 action: "UPDATE",
                 oldval: oldValue ?? Prisma.JsonNull,
-                newval: updatedRecord.value ?? Prisma.JsonNull
+                newval: updatedRecord?.value ?? Prisma.JsonNull
             }
         })
 
@@ -173,9 +185,86 @@ export const deleterec = async ({ tenantId, userId, role, recordId }: DeleteData
         return { change_track, existingRecord }
 
     }, {
-        maxWait: 5000, // 5s max wait to start transaction
-        timeout: 10000, // 10s max transaction time
+        maxWait: 5000,
+        timeout: 10000,
     })
 
     return { result }
+}
+
+//rollback
+
+interface rollbackData {
+    tenantId: string,
+    userId: string,
+    role: string,
+    trackId: string,
+}
+
+export const rollback = async ({ tenantId, userId, role, trackId }: rollbackData) => {
+    if (role !== "ADMIN") {
+        throw new Error("Only admin can access")
+    }
+
+
+    const result = await prisma.$transaction(async (tx) => {
+
+        // Fetch audit log
+        const log = await tx.change_track.findUnique({
+            where: { id: trackId }
+        });
+
+        if (!log) {
+            throw new Error("NO AUDIT LOG");
+        }
+
+        // Tenant isolation
+        if (log.tenantId !== tenantId) {
+            throw new Error("CROSS TENANT-ACCESS DENIED");
+        }
+
+        // Fetch record
+        const record = await tx.records.findUnique({
+            where: { id: log.recordId }
+        });
+
+        if (!record) {
+            throw new Error("NO RECORD FOUND");
+        }
+
+        // Save current value
+        const currentValue = record.value;
+
+        // Restore old value
+        const restoredRecord = await tx.records.update({
+            where: { id: record.id },
+            data: {
+                value: log.oldval ?? Prisma.JsonNull,
+                version: { increment: 1 }
+            }
+        });
+
+        //Create NEW audit log for rollback
+        const rollbackLog = await tx.change_track.create({
+            data: {
+                recordId: record.id,
+                tenantId: tenantId,
+                oldval: currentValue ?? Prisma.JsonNull,
+                newval: log.oldval ?? Prisma.JsonNull,
+                action: "ROLLBACK",
+                changeBy: userId
+            }
+        });
+
+        return {
+            restoredRecord,
+            rollbackLog
+        };
+    }, {
+        maxWait: 5000,
+        timeout: 10000,
+    });
+      
+    return{result}
+
 }

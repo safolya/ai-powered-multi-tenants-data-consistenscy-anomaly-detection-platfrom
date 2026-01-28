@@ -71,6 +71,8 @@ model Records {
   type         Record_type
   key          String
   value        Json
+  version      Int            @default(1)
+  createdAt    DateTime       @default(now())
   deleteAt     DateTime?
   tenant       Tenants        @relation(fields: [tenantId], references: [id])
   changeTracks Change_track[]
@@ -118,4 +120,5 @@ enum  Action_type {
   CREATE
   UPDATE
   DELETE
+  ROLLBACK
 }

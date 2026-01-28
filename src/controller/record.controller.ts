@@ -135,3 +135,51 @@ export const deleteRec=async(req:Request,res:Response)=>{
         });
    }
 }
+
+export const rollbackRec=async(req:Request,res:Response)=>{
+    try {
+        //@ts-ignore
+        const { tenantId, userId, role } = req.user;
+        const{trackId}=req.params;
+
+        const result=recordService.rollback({
+            tenantId, userId, role,trackId:trackId as string
+        })
+
+        res.status(200).json({
+            message:"Succesfully Rollback",
+            restoredRecord:(await result).result.restoredRecord,
+            trackLog:(await result).result.rollbackLog
+        })
+
+
+    } catch (error:any) {
+        if (error.message === "CROSS TENANT-ACCESS DENIED") {
+            return res.status(409).json({
+                success: false,
+                message: "Cross tenant-access denied"
+            });
+        }
+
+        else if(error.message === "NO AUDIT LOG") {
+            return res.status(409).json({
+                success: false,
+                message: "No audit found"
+            });
+        }
+
+        else if(error.message === "NO RECORD FOUND"){
+            return res.status(409).json({
+                success: false,
+                message: "Record no longer exist"
+            });
+        }
+
+        console.error("Record error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+}
