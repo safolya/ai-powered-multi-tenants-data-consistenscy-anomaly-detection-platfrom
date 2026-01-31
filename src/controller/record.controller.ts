@@ -58,7 +58,8 @@ export const update = async (req: Request, res: Response) => {
         res.status(200).json({
             message: "Successful",
             updatedrecord:(await result).result.updatedRecord,
-            track: (await result).result.change_track
+            track: (await result).result.change_track,
+            anomaly:(await result).result.isAnomaly
         })
 
     } catch (error:any) {

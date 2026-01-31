@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/prisma"
+import { buildAIFeatures } from "../utils/ai.featureBuider";
+import axios from "axios";
 import { Prisma, Record_type } from '../../generated/prisma/browser';
 
 interface CreateData {
@@ -123,7 +125,35 @@ export const update = async ({ tenantId, userId, role, recordId, value }: Update
             }
         })
 
-        return { change_track, updatedRecord }
+        const aiFeatures = buildAIFeatures({
+            oldval: oldValue,
+            newval: updatedRecord?.value,
+            recordType: updatedRecord?.type as string,
+            role,
+            createdAt: change_track.time
+        });
+
+        const aiResponse = await axios.post(
+            "http://localhost:8000/predict",
+            aiFeatures
+        );
+
+        const { isAnomaly, score } = aiResponse.data;
+
+        if (isAnomaly) {
+            await tx.anomaly.create({
+                data: {
+                    recordId: recordId,
+                    tenantId,
+                    trackId: change_track.id,
+                    score,
+                    severity: "HIGH",
+                    reason: "Unusual inventory drop detected"
+                }
+            });
+        }
+
+        return { change_track, updatedRecord, isAnomaly }
 
     }, {
         maxWait: 5000, // 5s max wait to start transaction
@@ -264,7 +294,7 @@ export const rollback = async ({ tenantId, userId, role, trackId }: rollbackData
         maxWait: 5000,
         timeout: 10000,
     });
-      
-    return{result}
+
+    return { result }
 
 }

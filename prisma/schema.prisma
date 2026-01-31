@@ -25,6 +25,7 @@ model Tenants {
   invitations  invitations[]
   records      Records[]
   changeTracks Change_track[]
+  anomalies    Anomaly[]
 
   @@index([status])
 }
@@ -76,19 +77,41 @@ model Records {
   deleteAt     DateTime?
   tenant       Tenants        @relation(fields: [tenantId], references: [id])
   changeTracks Change_track[]
+
+  anomalies Anomaly[]
 }
 
 model Change_track {
-  id       String   @id @default(uuid())
+  id       String      @id @default(uuid())
   recordId String
   newval   Json
   oldval   Json
   action   Action_type
   tenantId String
   changeBy String
-  time     DateTime @default(now())
-  tenant   Tenants  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  record   Records  @relation(fields: [recordId], references: [id])
+  time     DateTime    @default(now())
+  tenant   Tenants     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  record   Records     @relation(fields: [recordId], references: [id])
+
+  anomalies Anomaly[]
+}
+
+model Anomaly {
+  id        String       @id @default(uuid())
+  recordId  String
+  tenantId  String
+  trackId   String
+  score     Float
+  severity  AnomalySeverity
+  reason    String
+  createdAt DateTime     @default(now())
+  record    Records      @relation(fields: [recordId], references: [id])
+  tenant    Tenants      @relation(fields: [tenantId], references: [id])
+  track     Change_track @relation(fields: [trackId], references: [id])
+
+  @@index([tenantId])
+  @@index([recordId])
+  @@index([createdAt])
 }
 
 enum Role_type {
@@ -116,9 +139,15 @@ enum Record_type {
   LIMIT
 }
 
-enum  Action_type {
+enum Action_type {
   CREATE
   UPDATE
   DELETE
   ROLLBACK
+}
+
+enum AnomalySeverity {
+  LOW
+  MEDIUM
+  HIGH
 }
