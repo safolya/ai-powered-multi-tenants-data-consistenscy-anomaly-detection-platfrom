@@ -3,6 +3,23 @@ import { buildAIFeatures } from "../utils/ai.featureBuider";
 import axios from "axios";
 import { Prisma, Record_type } from '../../generated/prisma/browser';
 
+
+
+interface RecordsData {
+    tenantId: string,
+}
+
+export const records = async ({ tenantId }: RecordsData) => {
+    const records = await prisma.records.findMany({
+        where: {
+            tenantId: tenantId
+        }
+    })
+
+    return records;
+}
+
+
 interface CreateData {
     tenantId: string,
     userId: string

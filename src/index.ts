@@ -13,7 +13,7 @@ import recordRoutes from './routes/record.routes';
 
 const app = express();
 app.use(cookieParser());
-app.use(express.json())
+app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 

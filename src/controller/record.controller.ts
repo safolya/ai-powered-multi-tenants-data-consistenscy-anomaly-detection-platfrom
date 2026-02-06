@@ -1,6 +1,27 @@
 import { Request, Response } from "express";
 import * as recordService from "../services/record.service"
 
+
+
+export const records=async(req:Request,res:Response)=>{
+    try {
+        //@ts-ignore
+        const { tenantId } = req.user;
+        const result=await recordService.records({tenantId})
+        res.status(200).json({
+            success: true,
+            records: result
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+}
+
+
+
 export const create = async (req: Request, res: Response) => {
     try {
         const { type, key, value } = req.body;
