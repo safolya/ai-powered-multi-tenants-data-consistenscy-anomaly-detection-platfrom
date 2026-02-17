@@ -35,28 +35,25 @@ export function buildAIFeatures({
   recordType,
   role,
   createdAt
-}: {
-  oldval: any;
-  newval: any;
-  recordType: string;
-  role: string;
-  createdAt: Date;
-}) {
-  const oldNum = extractNumericValue(oldval, recordType);
-  const newNum = extractNumericValue(newval, recordType);
+}: any) {
 
-  const delta = Math.abs(oldNum - newNum);
-  const percentChange =
+  const oldNum = Number(oldval?.value ?? 0);
+  const newNum = Number(newval?.value ?? 0);
+
+  const delta = Math.abs(newNum - oldNum)/100;
+
+  let percent_change =
     oldNum === 0 ? 0 : (delta / oldNum) * 100;
+    percent_change = Math.min(percent_change, 500);
 
   const hour = new Date(createdAt).getHours();
 
-  const roleMap: Record<string, number> = {
+  const roleMap: any = {
     ADMIN: 0,
     MANAGER: 1
   };
 
-  const recordTypeMap: Record<string, number> = {
+  const recordTypeMap: any = {
     INVENTORY: 0,
     PRICES: 1,
     CONFIG: 2,
@@ -65,9 +62,10 @@ export function buildAIFeatures({
 
   return {
     delta,
-    percent_change: percentChange,
+    percent_change,
     hour,
     role: roleMap[role],
     record_type: recordTypeMap[recordType]
   };
 }
+

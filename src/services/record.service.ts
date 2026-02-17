@@ -94,7 +94,7 @@ interface UpdateData {
 
 export const update = async ({ tenantId, userId, role, recordId, value }: UpdateData) => {
     const result = await prisma.$transaction(async (tx) => {
-        const existingRecord = await prisma.records.findUnique({
+        const existingRecord = await tx.records.findUnique({
             where: { id: recordId as string }
         })
 
@@ -154,6 +154,8 @@ export const update = async ({ tenantId, userId, role, recordId, value }: Update
             "http://localhost:8000/predict",
             aiFeatures
         );
+
+        console.log("AI RESPONSE:", aiResponse.data);
 
         const { isAnomaly, score } = aiResponse.data;
 
